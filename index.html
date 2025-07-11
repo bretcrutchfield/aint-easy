@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trumping Aint Easy</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto Condensed', sans-serif;
+            background-color: #1F2937; /* gray-800 */
+            color: #F3F4F6; /* gray-100 */
+        }
+        .stat-card {
+            background-color: #374151; /* gray-700 */
+            border-radius: 0.5rem;
+            padding: 1rem;
+            text-align: center;
+            border: 1px solid #4B5563; /* gray-600 */
+            transition: all 0.3s ease;
+        }
+        .progress-bar-bg {
+            background-color: #4B5563; /* gray-600 */
+        }
+        .progress-bar {
+            transition: width 0.5s ease-in-out;
+        }
+        .decision-card {
+            background-color: #374151; /* gray-700 */
+            border: 1px solid #4B5563; /* gray-600 */
+        }
+        .decision-btn {
+            background-color: #4F46E5; /* indigo-600 */
+            transition: background-color 0.2s ease;
+        }
+        .decision-btn:hover {
+            background-color: #4338CA; /* indigo-700 */
+        }
+        #news-ticker {
+            background-color: #111827; /* gray-900 */
+        }
+        .news-item {
+            animation: fadeIn 0.5s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .stat-change {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.5rem;
+            font-weight: bold;
+            opacity: 0;
+            animation: fadeUp 1.5s ease-out;
+        }
+        @keyframes fadeUp {
+            0% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -150%) scale(1.2); }
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center h-screen">
+
+    <div class="container mx-auto p-4 max-w-4xl w-full">
+        <header class="text-center mb-4">
+            <h1 class="text-4xl md:text-5xl font-bold text-red-500 tracking-wider">Trumping Aint Easy</h1>
+            <p class="text-gray-400">Your decisions shape your legacy. Make America Great.</p>
+        </header>
+
+        <!-- Stats Dashboard -->
+        <div id="stats-dashboard" class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+            <!-- Stat Cards will be injected here by JS -->
+        </div>
+
+        <!-- Decision Area -->
+        <div id="decision-area" class="decision-card rounded-lg p-6 mb-4 shadow-lg min-h-[250px] flex flex-col justify-center">
+            <!-- Decision content injected by JS -->
+        </div>
+        
+        <!-- News Ticker -->
+        <div id="news-ticker" class="h-24 rounded-lg p-2 overflow-y-auto flex flex-col-reverse">
+            <!-- News items injected by JS -->
+        </div>
+
+    </div>
+
+    <!-- Game Over Modal -->
+    <div id="game-over-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center hidden">
+        <div class="bg-gray-800 p-8 rounded-lg text-center shadow-2xl max-w-md mx-auto">
+            <h2 id="game-over-title" class="text-4xl font-bold mb-4"></h2>
+            <p id="game-over-message" class="text-lg mb-6"></p>
+            <button id="restart-button" class="decision-btn text-white font-bold py-3 px-6 rounded-lg text-xl">
+                Play Again
+            </button>
+        </div>
+    </div>
+
+    <script>
+    window.onload = function() {
+        // --- DOM ELEMENTS ---
+        const statsDashboard = document.getElementById('stats-dashboard');
+        const decisionArea = document.getElementById('decision-area');
+        const newsTicker = document.getElementById('news-ticker');
+        const gameOverModal = document.getElementById('game-over-modal');
+        const gameOverTitle = document.getElementById('game-over-title');
+        const gameOverMessage = document.getElementById('game-over-message');
+        const restartButton = document.getElementById('restart-button');
+
+        // --- GAME STATE ---
+        let state;
+
+        const MAX_TURNS = 12;
+
+        const STATS = {
+            treasury: { name: "Treasury", color: "green-500", description: "National funds. Tariffs add to it, subsidies drain it." },
+            approval: { name: "Public Approval", color: "blue-500", description: "Your citizens' happiness. High prices hurt, protected jobs help." },
+            industry: { name: "Domestic Industry", color: "yellow-500", description: "The health of your local businesses. They love protection." },
+            relations: { name: "Foreign Relations", color: "purple-500", description: "How other countries see you. Tariffs cause friction." }
+        };
+
+        // --- GAME DATA (EVENTS) ---
+        const events = [
+            {
+                title: "Sanctions on Aggressor Nation",
+                description: "Allies are pressuring you to impose a full trade embargo on an aggressor nation invading its neighbor. This will show solidarity but will spike domestic energy prices and hurt your exporters.",
+                choices: [
+                    { text: "Impose Full Embargo", effects: { treasury: -15, approval: 10, industry: -10, relations: 15 } },
+                    { text: "Sanction Key Industries Only", effects: { treasury: -10, approval: 5, industry: -5, relations: 5 } },
+                    { text: "Prioritize Economic Stability", effects: { treasury: 10, approval: -15, industry: 10, relations: -20 } }
+                ]
+            },
+            {
+                title: "Humanitarian Crisis in Gaza",
+                description: "International aid organizations are calling for funding and open trade routes to prevent a humanitarian disaster in Gaza. Security advisors warn of risks, while allies are watching your response.",
+                choices: [
+                    { text: "Fund Aid & Open Routes", effects: { treasury: -20, approval: 10, industry: 0, relations: 15 } },
+                    { text: "Allow Aid, Maintain Restrictions", effects: { treasury: -10, approval: 5, industry: 0, relations: -5 } },
+                    { text: "Refuse, Citing Security Risks", effects: { treasury: 0, approval: -10, industry: 5, relations: -20 } }
+                ]
+            },
+            {
+                title: "The Great Chip War",
+                description: "A global rival is dominating the semiconductor market. Banning their chips would boost our tech industry but make all electronics more expensive for consumers.",
+                choices: [
+                    { text: "Ban Rival's Advanced Chips", effects: { treasury: 0, approval: -15, industry: 20, relations: -20 } },
+                    { text: "Subsidize Domestic Chip Factories", effects: { treasury: -25, approval: 5, industry: 15, relations: -5 } },
+                    { text: "Promote Open Competition", effects: { treasury: 0, approval: 10, industry: -15, relations: 10 } }
+                ]
+            },
+            {
+                title: "Ukraine's Grain Exports",
+                description: "The blockade of Ukraine's ports has been lifted, but global grain prices are unstable. Allies want us to buy Ukrainian grain to support their economy, but our farmers protest the cheap competition.",
+                choices: [
+                    { text: "Subsidize Ukrainian Grain Imports", effects: { treasury: -15, approval: -10, industry: -10, relations: 20 } },
+                    { text: "Impose a 'Solidarity Tariff'", effects: { treasury: 10, approval: 10, industry: 10, relations: -15 } },
+                    { text: "Let the Market Decide", effects: { treasury: 0, approval: -5, industry: -5, relations: 5 } }
+                ]
+            },
+            {
+                title: "Medical Supply Chain Vulnerability",
+                description: "The last pandemic showed that 90% of our medical supplies are imported. National security experts are demanding we bring production home, though it will be more expensive.",
+                choices: [
+                    { text: "Mandate Domestic Production", effects: { treasury: -15, approval: 10, industry: 15, relations: -10 } },
+                    { text: "Diversify Import Suppliers", effects: { treasury: -5, approval: 5, industry: -5, relations: 10 } },
+                    { text: "Maintain Lowest-Cost Imports", effects: { treasury: 5, approval: -15, industry: -10, relations: 0 }, specialEffect: 'pandemic' }
+                ]
+            },
+            {
+                title: "Rare Earth Mineral Crisis",
+                description: "A key supplier of rare earth minerals is threatening to restrict exports. Our high-tech and defense sectors are heavily dependent on these imports.",
+                choices: [
+                    { text: "Fund Domestic Mining Initiatives", effects: { treasury: -20, approval: 5, industry: 15, relations: -5 } },
+                    { text: "Form a Strategic Alliance", effects: { treasury: -10, approval: 0, industry: 0, relations: 15 } },
+                    { text: "Make Diplomatic Concessions", effects: { treasury: 0, approval: -10, industry: 0, relations: -15 } }
+                ]
+            },
+            {
+                title: "Digital Sovereignty Dispute",
+                description: "A major economic bloc is demanding we adopt their strict data privacy standards to continue cross-border data flows, which are vital for our tech companies.",
+                choices: [
+                    { text: "Adopt Their Standards", effects: { treasury: -5, approval: 15, industry: -10, relations: 10 } },
+                    { text: "Negotiate a Compromise", effects: { treasury: 0, approval: 5, industry: -5, relations: 5 } },
+                    { text: "Declare 'Digital Sovereignty'", effects: { treasury: 0, approval: -10, industry: 10, relations: -20 } }
+                ]
+            },
+            {
+                title: "The Carbon Border Tax",
+                description: "A coalition of climate-conscious nations has imposed a 'carbon tariff' on goods from countries without a carbon tax. Our exports are now more expensive.",
+                choices: [
+                    { text: "Implement a Carbon Tax", effects: { treasury: 10, approval: -15, industry: -10, relations: 15 } },
+                    { text: "Challenge at WTO", effects: { treasury: -5, approval: 5, industry: 5, relations: -10 } },
+                    { text: "Subsidize Affected Exporters", effects: { treasury: -20, approval: 10, industry: 10, relations: -5 } }
+                ]
+            },
+            {
+                title: "Arctic Shipping Lane Dispute",
+                description: "Newly opened Arctic shipping lanes could cut global shipping times, but multiple nations claim sovereignty. An international incident has flared up near a key passage.",
+                choices: [
+                    { text: "Fund Military Presence", effects: { treasury: -20, approval: 5, industry: 5, relations: -15 } },
+                    { text: "Push for an International Treaty", effects: { treasury: -5, approval: 10, industry: 0, relations: 20 } },
+                    { text: "Partner with a Single Ally", effects: { treasury: 0, approval: 0, industry: 0, relations: 5 } }
+                ]
+            },
+            {
+                title: "Global Food Shortage",
+                description: "A severe drought in a major agricultural region has caused a global spike in food prices. There are calls to release our national strategic food reserves.",
+                choices: [
+                    { text: "Release Strategic Reserves", effects: { treasury: -10, approval: 20, industry: -5, relations: 5 } },
+                    { text: "Ban Food Exports", effects: { treasury: 5, approval: 10, industry: 15, relations: -25 } },
+                    { text: "Provide Targeted Subsidies", effects: { treasury: -15, approval: 10, industry: 0, relations: 0 } }
+                ]
+            },
+            {
+                title: "Personal Scandal Erupts",
+                description: "A major news outlet has published a story alleging an affair with a prostitute while your wife was pregnant. The media is in a frenzy. Your advisors are presenting options on how to handle the fallout.",
+                choices: [
+                    { text: "Deny, Deny, Deny. Attack the media!", effects: { treasury: 0, approval: -20, industry: 5, relations: -15 } },
+                    { text: "Authorize a quiet settlement.", effects: { treasury: -25, approval: -10, industry: 0, relations: -5 } },
+                    { text: "Hold a press conference and apologize.", effects: { treasury: 0, approval: -30, industry: -5, relations: 10 } }
+                ]
+            },
+            {
+                title: "The Ethics of Trade",
+                description: "A lucrative trade deal is on the table with a nation known for poor labor practices. Our unions are threatening to strike if we sign it.",
+                choices: [
+                    { text: "Sign the Deal Anyway", effects: { treasury: 20, approval: -20, industry: 10, relations: -5 }, specialEffect: 'riots' },
+                    { text: "Demand Labor Reforms", effects: { treasury: 0, approval: 10, industry: -5, relations: 10 } },
+                    { text: "Scrap the Deal", effects: { treasury: -5, approval: 15, industry: -10, relations: -10 } }
+                ]
+            }
+        ];
+        let availableEvents = [];
+
+        // --- GAME LOGIC ---
+        function init() {
+            state = {
+                turn: 1,
+                treasury: 50,
+                approval: 50,
+                industry: 50,
+                relations: 50,
+            };
+            availableEvents = [...events];
+            gameOverModal.classList.add('hidden');
+            setupStatCards();
+            updateUI();
+            nextTurn();
+        }
+
+        function setupStatCards() {
+            statsDashboard.innerHTML = `<div class="stat-card md:col-span-1 col-span-2"><h3 class="font-bold text-lg">Turn: <span id="turn-counter">1</span>/${MAX_TURNS}</h3></div>`;
+            for (const key in STATS) {
+                const stat = STATS[key];
+                const card = document.createElement('div');
+                card.className = 'stat-card relative';
+                card.innerHTML = `
+                    <h3 class="font-bold">${stat.name}</h3>
+                    <div class="progress-bar-bg w-full h-4 rounded-full mt-2">
+                        <div id="progress-${key}" class="progress-bar h-4 rounded-full bg-${stat.color}"></div>
+                    </div>
+                    <p id="stat-${key}" class="text-xl font-bold mt-1"></p>
+                    <div id="change-${key}" class="stat-change text-${stat.color}"></div>
+                `;
+                statsDashboard.appendChild(card);
+            }
+        }
+
+        function updateUI() {
+            document.getElementById('turn-counter').textContent = state.turn;
+            for (const key in STATS) {
+                const value = state[key];
+                document.getElementById(`stat-${key}`).textContent = value;
+                const progressBar = document.getElementById(`progress-${key}`);
+                progressBar.style.width = `${Math.max(0, Math.min(100, value))}%`;
+
+                if (value < 25) {
+                    progressBar.classList.remove(`bg-${STATS[key].color}`);
+                    progressBar.classList.add('bg-red-600');
+                } else {
+                    progressBar.classList.add(`bg-${STATS[key].color}`);
+                    progressBar.classList.remove('bg-red-600');
+                }
+            }
+        }
+        
+        function showStatChange(statKey, change) {
+            const changeEl = document.getElementById(`change-${statKey}`);
+            if (!changeEl || change === 0) return;
+            
+            changeEl.textContent = `${change > 0 ? '+' : ''}${change}`;
+            changeEl.style.animation = 'none';
+            changeEl.offsetHeight; // Trigger reflow
+            changeEl.style.animation = 'fadeUp 1.5s ease-out';
+        }
+
+        function nextTurn() {
+            if (availableEvents.length === 0) {
+                decisionArea.innerHTML = `<p class="text-center text-gray-400">Awaiting new developments...</p>`;
+                return;
+            }
+            const eventIndex = Math.floor(Math.random() * availableEvents.length);
+            const currentEvent = availableEvents.splice(eventIndex, 1)[0];
+            
+            displayEvent(currentEvent);
+        }
+
+        function displayEvent(event) {
+            decisionArea.innerHTML = `
+                <h2 class="text-2xl font-bold mb-2 text-yellow-400">${event.title}</h2>
+                <p class="mb-4 text-gray-300">${event.description}</p>
+                <div id="choices" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
+            `;
+            const choicesContainer = document.getElementById('choices');
+            event.choices.forEach(choice => {
+                const button = document.createElement('button');
+                button.textContent = choice.text;
+                button.className = 'decision-btn text-white font-bold py-3 px-4 rounded-lg w-full';
+                button.onclick = () => handleChoice(choice);
+                choicesContainer.appendChild(button);
+            });
+        }
+
+        function handleChoice(choice) {
+            if (choice.specialEffect) {
+                triggerSpecialGameOver(choice.specialEffect);
+                return;
+            }
+
+            for (const key in choice.effects) {
+                state[key] += choice.effects[key];
+                state[key] = Math.max(0, Math.min(100, state[key]));
+                showStatChange(key, choice.effects[key]);
+            }
+            
+            state.turn++;
+            
+            addNewsItem(`Decision: "${choice.text}". The situation develops.`);
+
+            setTimeout(() => {
+                updateUI();
+                checkGameOver();
+            }, 1000);
+
+            decisionArea.innerHTML = `<p class="text-center text-gray-400">Analyzing consequences...</p>`;
+        }
+        
+        function addNewsItem(message) {
+            const item = document.createElement('p');
+            item.className = 'news-item text-gray-400 text-sm';
+            item.textContent = `Turn ${state.turn - 1}: ${message}`;
+            newsTicker.prepend(item);
+        }
+        
+        function triggerSpecialGameOver(effect) {
+            let title = "Catastrophe!";
+            let message = "An unforeseen event has occurred.";
+
+            switch(effect) {
+                case 'riots':
+                    title = "Government Toppled!";
+                    message = "Signing the controversial trade deal has caused massive, uncontrollable riots. Your government has collapsed.";
+                    break;
+                case 'pandemic':
+                    title = "Pandemic!";
+                    message = "A new virus emerges. By failing to secure medical supply chains, the nation was left defenseless. The healthcare system has collapsed, and you are removed from office in disgrace.";
+                    break;
+            }
+            
+            gameOverTitle.textContent = title;
+            gameOverMessage.textContent = message;
+            gameOverModal.classList.remove('hidden');
+        }
+
+        function checkGameOver() {
+            let reason = null;
+            if (state.treasury <= 0) reason = { title: "National Bankruptcy!", message: "The treasury is empty. The economy has collapsed under your leadership." };
+            else if (state.approval <= 0) reason = { title: "Voted Out!", message: "Public approval has plummeted. You've been overwhelmingly voted out of office." };
+            else if (state.industry <= 0) reason = { title: "Industrial Collapse!", message: "Domestic industry has been decimated, leading to mass unemployment." };
+            else if (state.relations <= 0) reason = { title: "Global Isolation!", message: "You have no allies left. The nation is isolated and vulnerable." };
+            else if (state.turn > MAX_TURNS) reason = { title: "Term Complete!", message: "You successfully navigated your term! A mixed legacy, but you survived. Your final approval was " + state.approval + "." };
+
+            if (reason) {
+                gameOverTitle.textContent = reason.title;
+                // FIX: The variable 'message' was not defined here. It should be 'reason.message'.
+                gameOverMessage.textContent = reason.message;
+                gameOverModal.classList.remove('hidden');
+            } else {
+                setTimeout(nextTurn, 500);
+            }
+        }
+        
+        restartButton.addEventListener('click', init);
+
+        // --- START GAME ---
+        init();
+    };
+    </script>
+</body>
+</html>
